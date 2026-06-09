@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏍️ Munnar Ride Planner Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --bg2: #0f0f1a;
+  --bg3: #13131f;
+  --card: rgba(255,255,255,0.04);
+  --card-hover: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.08);
+  --border-bright: rgba(255,150,0,0.3);
+  --orange: #ff8c00;
+  --orange2: #ff6b00;
+  --orange-glow: rgba(255,140,0,0.15);
+  --blue: #1e90ff;
+  --blue2: #0066cc;
+  --blue-glow: rgba(30,144,255,0.15);
+  --green: #00e676;
+  --red: #ff4444;
+  --text: #e8e8f0;
+  --text2: #9090a8;
+  --text3: #5a5a70;
+  --radius: 16px;
+  --radius-sm: 8px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-orange: 0 4px 20px rgba(255,140,0,0.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--orange); border-radius: 3px; }
+
+/* ── ANIMATIONS ── */
+@keyframes pulse-orange { 0%,100%{box-shadow:0 0 0 0 rgba(255,140,0,0.4)} 50%{box-shadow:0 0 0 12px rgba(255,140,0,0)} }
+@keyframes ride {
+  0% { transform: translateX(-120px) translateY(0); opacity:0; }
+  10% { opacity:1; }
+  90% { opacity:1; }
+  100% { transform: translateX(calc(100vw + 120px)) translateY(0); opacity:0; }
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes routeDash { to{stroke-dashoffset:0} }
+@keyframes glow { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+/* ── BACKGROUND SCENE ── */
+.bg-scene {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+}
+.bg-mountains {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 60vh;
+}
+.bg-mountains svg { width: 100%; height: 100%; }
+.bg-stars {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 20% 20%, rgba(30,144,255,0.05) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 10%, rgba(255,140,0,0.05) 0%, transparent 50%);
+}
+.star { position: absolute; border-radius: 50%; background: white; }
+.moto-rider {
+  position: fixed; bottom: 18%; left: 0; z-index: 1; pointer-events: none;
+  animation: ride 8s linear infinite;
+  font-size: 2rem; filter: drop-shadow(0 0 8px rgba(255,140,0,0.6));
+}
+
+/* ── LAYOUT ── */
+.app { position: relative; z-index: 2; }
+
+/* ── HEADER ── */
+.header {
+  padding: 1.5rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  background: rgba(10,10,15,0.7);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.6rem; font-weight: 700;
+  background: linear-gradient(135deg, var(--orange), var(--blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
+.logo span { font-size: 0.9rem; display: block; color: var(--text2); -webkit-text-fill-color: var(--text2); }
+.header-actions { display: flex; gap: 0.75rem; }
+.btn-icon {
+  background: var(--card); border: 1px solid var(--border); color: var(--text);
+  padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 0.8rem; font-family: 'Inter', sans-serif; transition: all 0.2s;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.btn-icon:hover { background: var(--card-hover); border-color: var(--orange); color: var(--orange); }
+
+/* ── HERO ── */
+.hero {
+  text-align: center; padding: 5rem 2rem 4rem;
+  animation: fadeUp 0.8s ease both;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(255,140,0,0.15), rgba(30,144,255,0.15));
+  border: 1px solid rgba(255,140,0,0.3); border-radius: 50px;
+  padding: 0.4rem 1.2rem; font-size: 0.8rem; color: var(--orange);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 1.5rem;
+}
+.hero h1 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; line-height: 1.1;
+  margin-bottom: 1rem;
+}
+.hero h1 .line1 { color: var(--text); }
+.hero h1 .line2 {
+  background: linear-gradient(135deg, var(--orange), var(--blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero p { color: var(--text2); font-size: 1.1rem; max-width: 560px; margin: 0 auto 3rem; line-height: 1.6; }
+
+/* ── PLAN CARDS ── */
+.plan-cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+  max-width: 900px; margin: 0 auto; padding: 0 1.5rem 5rem;
+}
+.plan-card {
+  position: relative; overflow: hidden;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 2.5rem 2rem;
+  cursor: pointer; transition: all 0.3s;
+  animation: fadeUp 0.8s ease both;
+}
+.plan-card:nth-child(2) { animation-delay: 0.15s; }
+.plan-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255,140,0,0.04));
+  opacity: 0; transition: opacity 0.3s;
+}
+.plan-card:hover { transform: translateY(-6px); border-color: var(--orange); box-shadow: var(--shadow-orange); }
+.plan-card:hover::before { opacity: 1; }
+.plan-card-icon {
+  font-size: 3rem; margin-bottom: 1rem; display: block;
+  animation: float 3s ease-in-out infinite;
+}
+.plan-card:nth-child(2) .plan-card-icon { animation-delay: 1.5s; }
+.plan-card h2 {
+  font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700;
+  color: var(--orange); margin-bottom: 0.5rem;
+}
+.plan-card p { color: var(--text2); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+.plan-card-meta { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.meta-tag {
+  background: rgba(255,140,0,0.1); border: 1px solid rgba(255,140,0,0.2);
+  color: var(--orange); padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 0.75rem;
+}
+.meta-tag.blue {
+  background: rgba(30,144,255,0.1); border-color: rgba(30,144,255,0.2); color: var(--blue);
+}
+.plan-rating { display: flex; align-items: center; gap: 0.5rem; color: var(--text2); font-size: 0.85rem; }
+.rating-stars { color: var(--orange); letter-spacing: 1px; }
+.btn-launch {
+  width: 100%; padding: 0.9rem; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--orange2), var(--orange));
+  border: none; color: white; font-family: 'Inter', sans-serif; font-weight: 600;
+  font-size: 1rem; cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+.btn-launch:hover { transform: scale(1.02); box-shadow: 0 6px 24px rgba(255,140,0,0.35); }
+.plan-recommended {
+  position: absolute; top: 1rem; right: 1rem;
+  background: linear-gradient(135deg, var(--blue2), var(--blue));
+  color: white; padding: 0.25rem 0.7rem; border-radius: 50px; font-size: 0.7rem; font-weight: 600;
+}
+
+/* ── TRIP PLANNER PAGE ── */
+.planner-page {
+  display: none; padding: 1.5rem; max-width: 1400px; margin: 0 auto;
+}
+.planner-page.active { display: block; animation: fadeUp 0.5s ease; }
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text2); padding: 0.6rem 1.2rem; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.85rem; margin-bottom: 1.5rem; transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.back-btn:hover { color: var(--orange); border-color: var(--orange); }
+
+.section-title {
+  font-family: 'Rajdhani', sans-serif; font-size: 1.4rem; font-weight: 700;
+  color: var(--text); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border); margin-left: 0.5rem;
+}
+
+/* ── GLASS CARD ── */
+.glass-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem;
+  backdrop-filter: blur(10px); margin-bottom: 1.5rem;
+}
+.glass-card.orange-accent { border-color: rgba(255,140,0,0.2); }
+.glass-card.blue-accent { border-color: rgba(30,144,255,0.2); }
+
+/* ── GRID LAYOUTS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+/* ── TRIP INFO ── */
+.trip-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+
+.info-input-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.info-input-group label { font-size: 0.8rem; color: var(--text2); font-weight: 500; }
+.info-input {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  color: var(--text); padding: 0.7rem 1rem; border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif; font-size: 0.95rem; transition: border-color 0.2s;
+}
+.info-input:focus { outline: none; border-color: var(--orange); }
+
+/* ── STAT CARDS ── */
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.2rem;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.stat-card.orange { border-color: rgba(255,140,0,0.2); background: rgba(255,140,0,0.05); }
+.stat-card.blue { border-color: rgba(30,144,255,0.2); background: rgba(30,144,255,0.05); }
+.stat-card.green { border-color: rgba(0,230,118,0.2); background: rgba(0,230,118,0.05); }
+.stat-card.red { border-color: rgba(255,68,68,0.2); background: rgba(255,68,68,0.05); }
+.stat-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+.stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; }
+.stat-value.orange { color: var(--orange); }
+.stat-value.blue { color: var(--blue); }
+.stat-value.green { color: var(--green); }
+.stat-value.red { color: var(--red); }
+.stat-sub { font-size: 0.75rem; color: var(--text3); }
+
+/* ── ITINERARY ── */
+.day-tabs {
+  display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+}
+.day-tab {
+  padding: 0.5rem 1.2rem; border-radius: var(--radius-sm);
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.day-tab.active { background: var(--orange); border-color: var(--orange); color: white; }
+.day-tab:hover:not(.active) { border-color: var(--orange); color: var(--orange); }
+
+.route-timeline { position: relative; padding: 0.5rem 0; }
+.route-point {
+  display: flex; align-items: flex-start; gap: 1rem; padding: 0.7rem 0;
+  position: relative;
+}
+.route-point::before {
+  content: ''; position: absolute; left: 10px; top: 30px; bottom: -10px;
+  width: 2px; background: linear-gradient(to bottom, var(--orange), transparent);
+}
+.route-point:last-child::before { display: none; }
+.route-dot {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--orange); background: var(--bg);
+  display: flex; align-items: center; justify-content: center; font-size: 0.6rem;
+  margin-top: 2px; z-index: 1;
+}
+.route-dot.start { background: var(--orange); color: white; }
+.route-dot.end { background: var(--blue); border-color: var(--blue); color: white; }
+.route-name { font-weight: 600; font-size: 0.95rem; }
+.route-desc { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+.route-arrow { font-size: 1.2rem; color: var(--orange); align-self: center; padding-left: 0.5rem; }
+
+/* ── PROGRESS ── */
+.progress-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 50px; height: 10px; overflow: hidden; }
+.progress-bar-fill {
+  height: 100%; border-radius: 50px;
+  background: linear-gradient(90deg, var(--orange), var(--blue));
+  transition: width 0.6s ease;
+}
+.completion-meter {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.completion-step {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.8rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); cursor: pointer; font-size: 0.8rem;
+  transition: all 0.2s; background: var(--card);
+}
+.completion-step.done { border-color: var(--green); background: rgba(0,230,118,0.08); color: var(--green); }
+.completion-step:hover:not(.done) { border-color: var(--orange); }
+
+/* ── EXPENSE ── */
+.expense-categories { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+.cat-btn {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0.8rem 0.5rem; text-align: center;
+  cursor: pointer; transition: all 0.2s; font-size: 0.78rem; color: var(--text2);
+}
+.cat-btn:hover, .cat-btn.active { border-color: var(--orange); color: var(--orange); background: var(--orange-glow); }
+.cat-btn .cat-icon { font-size: 1.4rem; display: block; margin-bottom: 0.3rem; }
+
+.expense-form {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;
+  padding: 1rem; background: rgba(255,140,0,0.03); border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,140,0,0.1); margin-bottom: 1rem;
+}
+
+.expense-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.expense-table th {
+  text-align: left; padding: 0.7rem 0.8rem; color: var(--text2);
+  border-bottom: 1px solid var(--border); font-weight: 500; font-size: 0.75rem;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.expense-table td { padding: 0.7rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.expense-table tr:hover td { background: rgba(255,255,255,0.02); }
+.expense-table .amount { color: var(--orange); font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
+
+.btn-sm {
+  padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+  border: 1px solid; font-family: 'Inter', sans-serif; transition: all 0.2s;
+}
+.btn-edit { border-color: var(--blue); color: var(--blue); background: transparent; }
+.btn-edit:hover { background: var(--blue-glow); }
+.btn-delete { border-color: var(--red); color: var(--red); background: transparent; }
+.btn-delete:hover { background: rgba(255,68,68,0.1); }
+.btn-add {
+  padding: 0.7rem 1.5rem; background: linear-gradient(135deg, var(--orange2), var(--orange));
+  border: none; color: white; border-radius: var(--radius-sm); cursor: pointer;
+  font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;
+}
+.btn-add:hover { box-shadow: 0 4px 16px rgba(255,140,0,0.3); }
+.btn-blue {
+  padding: 0.7rem 1.5rem; background: linear-gradient(135deg, var(--blue2), var(--blue));
+  border: none; color: white; border-radius: var(--radius-sm); cursor: pointer;
+  font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;
+}
+
+/* ── CHARTS ── */
+.chart-container { position: relative; height: 260px; }
+
+/* ── EMERGENCY ── */
+.emergency-bar { margin-top: 0.75rem; }
+.emergency-labels { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text2); margin-bottom: 0.4rem; }
+
+/* ── CHECKLISTS ── */
+.checklist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.5rem; }
+.checklist-item {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.6rem 0.8rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+  font-size: 0.85rem;
+}
+.checklist-item.checked { border-color: var(--green); background: rgba(0,230,118,0.06); color: var(--green); text-decoration: line-through; opacity: 0.7; }
+.checklist-item:hover:not(.checked) { border-color: var(--orange); }
+.check-box {
+  width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.7rem;
+}
+.checklist-item.checked .check-box { border-color: var(--green); background: var(--green); color: var(--bg); }
+
+/* ── CONTACTS ── */
+.contact-list { display: grid; gap: 0.75rem; }
+.contact-item {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 1rem;
+}
+.contact-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange), var(--blue));
+  display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+}
+.contact-info { flex: 1; }
+.contact-name { font-weight: 600; font-size: 0.9rem; }
+.contact-role { font-size: 0.75rem; color: var(--text2); }
+.contact-phone { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; color: var(--blue); }
+
+/* ── FUEL CALCULATOR ── */
+.calc-result {
+  background: linear-gradient(135deg, rgba(255,140,0,0.1), rgba(30,144,255,0.1));
+  border: 1px solid rgba(255,140,0,0.2); border-radius: var(--radius-sm); padding: 1rem;
+  margin-top: 0.75rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;
+}
+.calc-item { text-align: center; }
+.calc-item-val { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--orange); }
+.calc-item-label { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }
+
+/* ── WEATHER ── */
+.weather-card {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.weather-icon { font-size: 3.5rem; animation: float 4s ease-in-out infinite; }
+.weather-temp { font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 700; }
+.weather-details { display: flex; flex-direction: column; gap: 0.2rem; }
+.weather-detail { font-size: 0.8rem; color: var(--text2); }
+
+/* ── EXPORT BTNS ── */
+.export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+.export-btn {
+  padding: 1rem; border-radius: var(--radius); text-align: center; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card); transition: all 0.2s;
+  font-size: 0.85rem; color: var(--text2);
+}
+.export-btn:hover { border-color: var(--orange); color: var(--orange); transform: translateY(-3px); }
+.export-btn .export-icon { font-size: 1.8rem; margin-bottom: 0.5rem; display: block; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; gap: 0.25rem; margin-bottom: 1.5rem;
+  background: var(--bg2); border-radius: var(--radius); padding: 0.3rem;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.tab {
+  padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 0.8rem; white-space: nowrap; transition: all 0.2s; color: var(--text2);
+  font-family: 'Inter', sans-serif; flex-shrink: 0;
+}
+.tab.active { background: var(--orange); color: white; }
+.tab:hover:not(.active) { color: var(--orange); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeUp 0.3s ease; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 2rem; right: 2rem; z-index: 9999;
+  background: var(--orange); color: white; padding: 0.8rem 1.5rem; border-radius: var(--radius-sm);
+  font-size: 0.9rem; box-shadow: var(--shadow); transform: translateY(100px); opacity: 0;
+  transition: all 0.3s; pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; padding: 1rem;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.5rem; max-width: 500px; width: 100%; animation: fadeUp 0.3s ease;
+}
+.modal h3 { font-family: 'Rajdhani', sans-serif; font-size: 1.3rem; margin-bottom: 1rem; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .plan-cards { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .header { padding: 1rem 1rem; }
+  .logo span { display: none; }
+  .hero { padding: 3rem 1.5rem 3rem; }
+}
+@media (max-width: 480px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .expense-form { grid-template-columns: 1fr; }
+  .tab-bar { gap: 0.15rem; }
+}
+
+/* Table scroll on mobile */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+</style>
+</head>
+<body>
+
+<!-- BACKGROUND SCENE -->
+<div class="bg-scene">
+  <div class="bg-stars" id="bgStars"></div>
+  <div class="bg-mountains">
+    <svg viewBox="0 0 1440 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="mg1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a2540" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#0a0a0f" stop-opacity="0.9"/>
+        </linearGradient>
+        <linearGradient id="mg2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0d1520" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#0a0a0f"/>
+        </linearGradient>
+      </defs>
+      <!-- Far mountains -->
+      <path d="M0,300 L80,180 L160,220 L280,120 L400,200 L520,100 L640,170 L760,80 L880,160 L1000,90 L1120,140 L1240,100 L1360,160 L1440,130 L1440,400 L0,400Z" fill="url(#mg1)"/>
+      <!-- Near mountains -->
+      <path d="M0,350 L120,260 L240,300 L360,220 L480,280 L600,200 L720,260 L840,190 L960,250 L1080,180 L1200,240 L1320,200 L1440,250 L1440,400 L0,400Z" fill="url(#mg2)"/>
+      <!-- Ground glow -->
+      <path d="M0,380 L1440,380 L1440,400 L0,400Z" fill="rgba(255,140,0,0.05)"/>
+    </svg>
+  </div>
+  <div class="moto-rider">🏍️</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Edit Expense</h3>
+    <div id="modalBody"></div>
+    <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+      <button class="btn-add" onclick="saveEditExpense()" style="flex:1">Save</button>
+      <button class="btn-icon" onclick="closeModal()" style="flex:1">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div>
+    <div class="logo">🏍️ Munnar Ride Planner Pro</div>
+    <div class="logo"><span>Kerala Mountain Circuit · Premium Touring Guide</span></div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" onclick="exportPDF()">📄 PDF</button>
+    <button class="btn-icon" onclick="clearData()">🗑️ Clear</button>
+  </div>
+</header>
+
+<!-- ═══ HOME PAGE ═══ -->
+<div id="homePage">
+  <div class="hero">
+    <div class="hero-badge">⛰️ &nbsp; MUNNAR · KERALA · INDIA</div>
+    <h1>
+      <div class="line1">The Ultimate</div>
+      <div class="line2">Mountain Ride Planner</div>
+    </h1>
+    <p>Plan every twist and turn. Track every rupee. Conquer Lockhart Gap, Top Station, and the misty roads of the Western Ghats.</p>
+  </div>
+
+  <div class="plan-cards">
+    <!-- 2D1N -->
+    <div class="plan-card" onclick="openPlan(2)">
+      <span class="plan-card-icon">🏍️</span>
+      <h2>2 Days / 1 Night</h2>
+      <p>A high-intensity weekend circuit covering Lockhart Gap, Chinnakanal Waterfalls, Top Station, Vattavada, Marayoor & Kanthalloor.</p>
+      <div class="plan-card-meta">
+        <span class="meta-tag">~420 km</span>
+        <span class="meta-tag blue">10 Stops</span>
+        <span class="meta-tag">Moderate–Hard</span>
+      </div>
+      <div class="plan-rating">
+        <span class="rating-stars">★★★★</span>
+        <span>8.5 / 10 · Coverage 80%</span>
+      </div>
+      <br>
+      <button class="btn-launch">Launch 2D Planner →</button>
+    </div>
+    <!-- 3D2N -->
+    <div class="plan-card" onclick="openPlan(3)" style="border-color:rgba(30,144,255,0.25);">
+      <div class="plan-recommended">⭐ Recommended</div>
+      <span class="plan-card-icon">🏕️</span>
+      <h2 style="color:var(--blue)">3 Days / 2 Nights</h2>
+      <p>The full Munnar experience — Eravikulam, Anamudi, Lakkam Waterfalls, Tea Estate roads, and campfire nights under the stars.</p>
+      <div class="plan-card-meta">
+        <span class="meta-tag" style="background:rgba(30,144,255,0.1);border-color:rgba(30,144,255,0.2);color:var(--blue)">~600 km</span>
+        <span class="meta-tag" style="background:rgba(30,144,255,0.1);border-color:rgba(30,144,255,0.2);color:var(--blue)">15 Stops</span>
+        <span class="meta-tag" style="background:rgba(30,144,255,0.1);border-color:rgba(30,144,255,0.2);color:var(--blue)">Epic Ride</span>
+      </div>
+      <div class="plan-rating">
+        <span class="rating-stars">★★★★★</span>
+        <span>9.8 / 10 · Coverage 95%</span>
+      </div>
+      <br>
+      <button class="btn-launch" style="background:linear-gradient(135deg,var(--blue2),var(--blue))">Launch 3D Planner →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PLANNER PAGE ═══ -->
+<div class="planner-page" id="plannerPage">
+  <button class="back-btn" onclick="goHome()">← Back to Plans</button>
+
+  <!-- Tab Navigation -->
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('overview')">📊 Overview</div>
+    <div class="tab" onclick="switchTab('itinerary')">🗺️ Itinerary</div>
+    <div class="tab" onclick="switchTab('budget')">💰 Budget</div>
+    <div class="tab" onclick="switchTab('charts')">📈 Analytics</div>
+    <div class="tab" onclick="switchTab('checklists')">✅ Checklists</div>
+    <div class="tab" onclick="switchTab('tools')">🔧 Tools</div>
+    <div class="tab" onclick="switchTab('export')">📤 Export</div>
+  </div>
+
+  <!-- ─── OVERVIEW TAB ─── -->
+  <div class="tab-content active" id="tab-overview">
+    <!-- Trip Info -->
+    <div class="glass-card orange-accent">
+      <div class="section-title">🏍️ Trip Information</div>
+      <div class="trip-info-grid">
+        <div class="info-input-group">
+          <label>Number of Riders</label>
+          <input class="info-input" type="number" id="numRiders" value="10" min="1" oninput="saveInfo();updateStats()">
+        </div>
+        <div class="info-input-group">
+          <label>Number of Bikes</label>
+          <input class="info-input" type="number" id="numBikes" value="5" min="1" oninput="saveInfo();updateStats()">
+        </div>
+        <div class="info-input-group">
+          <label>Total Budget (₹)</label>
+          <input class="info-input" type="number" id="totalBudget" value="30000" min="0" oninput="saveInfo();updateStats()">
+        </div>
+        <div class="info-input-group">
+          <label>Budget Per Head (₹)</label>
+          <input class="info-input" type="number" id="budgetPerHead" value="3000" min="0" oninput="saveInfo();updateStats()">
+        </div>
+        <div class="info-input-group">
+          <label>Trip Start Date</label>
+          <input class="info-input" type="date" id="tripStart" oninput="saveInfo()">
+        </div>
+        <div class="info-input-group">
+          <label>Trip End Date</label>
+          <input class="info-input" type="date" id="tripEnd" oninput="saveInfo()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="section-title">📊 Live Budget Overview</div>
+    <div class="grid-4" style="margin-bottom:1.5rem">
+      <div class="stat-card orange">
+        <div class="stat-label">Total Budget</div>
+        <div class="stat-value orange" id="st-budget">₹30,000</div>
+        <div class="stat-sub">Trip budget</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value red" id="st-spent">₹0</div>
+        <div class="stat-sub" id="st-spent-pct">0% used</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value green" id="st-remaining">₹30,000</div>
+        <div class="stat-sub" id="st-rem-pct">100% left</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Cost Per Head</div>
+        <div class="stat-value blue" id="st-perhead">₹0</div>
+        <div class="stat-sub" id="st-perbike">₹0 / bike</div>
+      </div>
+    </div>
+
+    <!-- Budget Progress -->
+    <div class="glass-card" style="margin-bottom:1.5rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.85rem;color:var(--text2)">Budget Utilization</span>
+        <span style="font-size:0.85rem;color:var(--orange)" id="budgetPct">0%</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="budgetProgress" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Trip Completion -->
+    <div class="glass-card orange-accent">
+      <div class="section-title">🏁 Trip Completion</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.85rem;color:var(--text2)">Progress</span>
+        <span style="font-size:0.85rem;color:var(--orange)" id="completionPct">0%</span>
+      </div>
+      <div class="progress-bar-wrap" style="margin-bottom:1rem">
+        <div class="progress-bar-fill" id="completionProgress" style="width:0%"></div>
+      </div>
+      <div class="completion-meter" id="completionSteps"></div>
+    </div>
+
+    <!-- Emergency Fund -->
+    <div class="glass-card" style="border-color:rgba(255,68,68,0.2)">
+      <div class="section-title">🚑 Emergency Fund Tracker</div>
+      <div class="grid-3" style="margin-bottom:1rem">
+        <div class="info-input-group">
+          <label>Emergency Fund (₹)</label>
+          <input class="info-input" type="number" id="emergencyFund" value="5000" oninput="saveInfo();updateEmergency()">
+        </div>
+        <div class="info-input-group">
+          <label>Used Amount (₹)</label>
+          <input class="info-input" type="number" id="emergencyUsed" value="0" oninput="saveInfo();updateEmergency()">
+        </div>
+        <div class="info-input-group">
+          <label>Remaining</label>
+          <input class="info-input" type="text" id="emergencyRemaining" readonly value="₹5,000" style="color:var(--green)">
+        </div>
+      </div>
+      <div class="emergency-bar">
+        <div class="emergency-labels"><span>₹0</span><span id="emergencyMax">₹5,000</span></div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="emergencyProgress" style="width:0%;background:linear-gradient(90deg,var(--green),var(--red))"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trip Statistics -->
+    <div class="glass-card blue-accent">
+      <div class="section-title">📏 Trip Statistics</div>
+      <div class="grid-4">
+        <div class="stat-card">
+          <div class="stat-label">Total Distance</div>
+          <div class="stat-value orange" id="totalDist">420 km</div>
+          <div class="stat-sub" id="totalDistSub">2-day circuit</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg / Day</div>
+          <div class="stat-value blue" id="avgDay">₹0</div>
+          <div class="stat-sub">per day</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg / Rider</div>
+          <div class="stat-value green" id="avgRider">₹0</div>
+          <div class="stat-sub">per person</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Fuel Est.</div>
+          <div class="stat-value" id="fuelEst" style="color:var(--orange)">—</div>
+          <div class="stat-sub">at ₹102/L</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── ITINERARY TAB ─── -->
+  <div class="tab-content" id="tab-itinerary">
+    <div class="glass-card orange-accent" style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+        <div>
+          <div class="stat-label">Coverage</div>
+          <div class="stat-value orange" id="itinCoverage">80%</div>
+        </div>
+        <div>
+          <div class="stat-label">Rating</div>
+          <div class="stat-value" id="itinRating" style="color:var(--blue)">8.5/10</div>
+        </div>
+        <div>
+          <div class="stat-label">Days</div>
+          <div class="stat-value" id="itinDays" style="color:var(--green)">2</div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="stat-label" style="margin-bottom:0.4rem">Route Coverage</div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="coverageBar" style="width:80%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="day-tabs" id="dayTabs"></div>
+    <div id="dayContent"></div>
+  </div>
+
+  <!-- ─── BUDGET TAB ─── -->
+  <div class="tab-content" id="tab-budget">
+    <!-- Categories -->
+    <div class="section-title">🏷️ Expense Categories</div>
+    <div class="expense-categories" id="expenseCategories"></div>
+
+    <!-- Expense Form -->
+    <div class="glass-card orange-accent">
+      <div class="section-title">➕ Add Expense</div>
+      <div class="expense-form">
+        <div class="info-input-group">
+          <label>Category</label>
+          <select class="info-input" id="expCat">
+            <option>⛽ Petrol</option>
+            <option>🏠 Homestay</option>
+            <option>🍛 Food</option>
+            <option>☕ Tea Breaks</option>
+            <option>🔧 Bike Repair</option>
+            <option>🛞 Puncture</option>
+            <option>🚑 First Aid</option>
+            <option>💧 Water</option>
+            <option>🔥 Campfire</option>
+            <option>🎟️ Sightseeing</option>
+            <option>🛵 Parking</option>
+            <option>💸 Other</option>
+          </select>
+        </div>
+        <div class="info-input-group">
+          <label>Expense Name</label>
+          <input class="info-input" id="expName" placeholder="e.g. Petrol fill at Munnar">
+        </div>
+        <div class="info-input-group">
+          <label>Amount (₹)</label>
+          <input class="info-input" type="number" id="expAmount" placeholder="0" min="0">
+        </div>
+        <div class="info-input-group">
+          <label>Date</label>
+          <input class="info-input" type="date" id="expDate">
+        </div>
+        <div class="info-input-group">
+          <label>Day</label>
+          <select class="info-input" id="expDay">
+            <option value="1">Day 1</option>
+            <option value="2">Day 2</option>
+            <option value="3">Day 3</option>
+          </select>
+        </div>
+        <div class="info-input-group">
+          <label>Notes</label>
+          <input class="info-input" id="expNotes" placeholder="Optional note...">
+        </div>
+      </div>
+      <button class="btn-add" onclick="addExpense()">+ Add Expense</button>
+    </div>
+
+    <!-- Expense Table -->
+    <div class="glass-card">
+      <div class="section-title">📋 Expense Log</div>
+      <div class="table-scroll">
+        <table class="expense-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Category</th>
+              <th>Name</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="expenseTableBody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:2rem;">
+        <span style="color:var(--text2);font-size:0.85rem">Total Expenses:</span>
+        <span style="color:var(--orange);font-weight:700;font-family:'Space Grotesk',sans-serif" id="expenseTotal">₹0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CHARTS TAB ─── -->
+  <div class="tab-content" id="tab-charts">
+    <div class="grid-2" style="margin-bottom:1.5rem">
+      <div class="glass-card">
+        <div class="section-title">🥧 Category Distribution</div>
+        <div class="chart-container"><canvas id="pieChart"></canvas></div>
+      </div>
+      <div class="glass-card">
+        <div class="section-title">📊 Day-wise Spending</div>
+        <div class="chart-container"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+    <div class="glass-card">
+      <div class="section-title">📈 Expense Timeline</div>
+      <div class="chart-container" style="height:220px"><canvas id="lineChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ─── CHECKLISTS TAB ─── -->
+  <div class="tab-content" id="tab-checklists">
+    <div class="tab-bar" style="margin-bottom:1.5rem">
+      <div class="tab active" onclick="switchCheckTab('rain')">🌧️ Rain</div>
+      <div class="tab" onclick="switchCheckTab('packing')">🎒 Packing</div>
+      <div class="tab" onclick="switchCheckTab('bike')">🔧 Bike</div>
+      <div class="tab" onclick="switchCheckTab('contacts')">📞 Contacts</div>
+    </div>
+    <div id="checkTab-rain" class="check-tab-content active"></div>
+    <div id="checkTab-packing" class="check-tab-content" style="display:none"></div>
+    <div id="checkTab-bike" class="check-tab-content" style="display:none"></div>
+    <div id="checkTab-contacts" class="check-tab-content" style="display:none"></div>
+  </div>
+
+  <!-- ─── TOOLS TAB ─── -->
+  <div class="tab-content" id="tab-tools">
+    <div class="grid-2">
+      <!-- Fuel Calculator -->
+      <div class="glass-card orange-accent">
+        <div class="section-title">⛽ Fuel Calculator</div>
+        <div style="display:grid;gap:0.75rem">
+          <div class="info-input-group">
+            <label>Distance (km)</label>
+            <input class="info-input" type="number" id="fcDist" value="420" oninput="calcFuel()">
+          </div>
+          <div class="info-input-group">
+            <label>Mileage (km/L)</label>
+            <input class="info-input" type="number" id="fcMileage" value="35" oninput="calcFuel()">
+          </div>
+          <div class="info-input-group">
+            <label>Fuel Price (₹/L)</label>
+            <input class="info-input" type="number" id="fcPrice" value="102" oninput="calcFuel()">
+          </div>
+          <div class="info-input-group">
+            <label>Number of Bikes</label>
+            <input class="info-input" type="number" id="fcBikes" value="5" oninput="calcFuel()">
+          </div>
+        </div>
+        <div class="calc-result" id="fuelResult">
+          <div class="calc-item"><div class="calc-item-val" id="fr-liters">12 L</div><div class="calc-item-label">Per Bike</div></div>
+          <div class="calc-item"><div class="calc-item-val" id="fr-total">60 L</div><div class="calc-item-label">Total Litres</div></div>
+          <div class="calc-item"><div class="calc-item-val" id="fr-cost">₹1,224</div><div class="calc-item-label">Per Bike Cost</div></div>
+          <div class="calc-item"><div class="calc-item-val" id="fr-totalcost">₹6,120</div><div class="calc-item-label">Total Fuel Cost</div></div>
+        </div>
+      </div>
+
+      <!-- Mileage Calculator -->
+      <div class="glass-card blue-accent">
+        <div class="section-title">📏 Mileage Calculator</div>
+        <div style="display:grid;gap:0.75rem">
+          <div class="info-input-group">
+            <label>Distance Ridden (km)</label>
+            <input class="info-input" type="number" id="mcDist" value="100" oninput="calcMileage()">
+          </div>
+          <div class="info-input-group">
+            <label>Fuel Used (L)</label>
+            <input class="info-input" type="number" id="mcFuel" value="3" oninput="calcMileage()">
+          </div>
+          <div class="info-input-group">
+            <label>Fuel Cost Paid (₹)</label>
+            <input class="info-input" type="number" id="mcCost" value="306" oninput="calcMileage()">
+          </div>
+        </div>
+        <div class="calc-result" id="mileageResult">
+          <div class="calc-item"><div class="calc-item-val" id="mr-mileage">33.3</div><div class="calc-item-label">km/L Mileage</div></div>
+          <div class="calc-item"><div class="calc-item-val" id="mr-perkm">₹3.06</div><div class="calc-item-label">Cost per km</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weather Widget -->
+    <div class="glass-card" style="border-color:rgba(30,144,255,0.2)">
+      <div class="section-title">🌤️ Munnar Weather (July)</div>
+      <div class="weather-card">
+        <div class="weather-icon">🌧️</div>
+        <div>
+          <div class="weather-temp" style="color:var(--blue)">18°C</div>
+          <div style="font-size:1rem;margin:0.2rem 0">Heavy Monsoon Season</div>
+          <div class="weather-detail">Visibility: 2–5 km (Misty)</div>
+          <div class="weather-detail">Humidity: 92%</div>
+          <div class="weather-detail">Wind: 20–35 km/h SW</div>
+          <div class="weather-detail">Road Condition: Wet · Slippery corners</div>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div style="font-size:0.8rem;color:var(--text2);margin-bottom:0.5rem">⚠️ Monsoon Riding Tips</div>
+          <ul style="font-size:0.78rem;color:var(--text2);padding-left:1rem;line-height:1.8">
+            <li>Rain gear must at all times</li>
+            <li>Slow before all sharp bends</li>
+            <li>Lockhart Gap — fog possible</li>
+            <li>Top Station road — landslide risk</li>
+            <li>Check daily road conditions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── EXPORT TAB ─── -->
+  <div class="tab-content" id="tab-export">
+    <div class="glass-card orange-accent" style="margin-bottom:1.5rem">
+      <div class="section-title">📤 Export & Download</div>
+      <div class="export-grid">
+        <div class="export-btn" onclick="exportPDF()">
+          <span class="export-icon">📄</span>
+          <strong>Export PDF</strong>
+          <div style="font-size:0.75rem;margin-top:0.3rem;color:var(--text3)">Full trip report</div>
+        </div>
+        <div class="export-btn" onclick="exportExcel()">
+          <span class="export-icon">📊</span>
+          <strong>Export Excel</strong>
+          <div style="font-size:0.75rem;margin-top:0.3rem;color:var(--text3)">Budget spreadsheet</div>
+        </div>
+        <div class="export-btn" onclick="printReport()">
+          <span class="export-icon">🖨️</span>
+          <strong>Print Report</strong>
+          <div style="font-size:0.75rem;margin-top:0.3rem;color:var(--text3)">Budget summary</div>
+        </div>
+        <div class="export-btn" onclick="downloadSummary()">
+          <span class="export-icon">💾</span>
+          <strong>Save Summary</strong>
+          <div style="font-size:0.75rem;margin-top:0.3rem;color:var(--text3)">Download .txt</div>
+        </div>
+        <div class="export-btn" onclick="copyToClipboard()">
+          <span class="export-icon">📋</span>
+          <strong>Copy Report</strong>
+          <div style="font-size:0.75rem;margin-top:0.3rem;color:var(--text3)">Copy to clipboard</div>
+        </div>
+        <div class="export-btn" onclick="shareTrip()">
+          <span class="export-icon">🔗</span>
+          <strong>Share Trip</strong>
+          <div style="font-size:0.75rem;margin-top:0.3rem;color:var(--text3)">Share link</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense Summary Preview -->
+    <div class="glass-card">
+      <div class="section-title">🗒️ Budget Report Preview</div>
+      <div id="reportPreview" style="font-family:'Space Grotesk',monospace;font-size:0.82rem;line-height:1.8;color:var(--text2);white-space:pre-wrap"></div>
+    </div>
+  </div>
+
+</div><!-- end planner -->
+</div><!-- end app -->
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+let currentPlan = 2;
+let expenses = [];
+let editingIdx = null;
+let completedDays = [];
+let checkedItems = {};
+
+const PLANS = {
+  2: {
+    days: 2, nights: 1,
+    coverage: "80%", rating: "8.5/10",
+    distance: "420 km", distSub: "2-day circuit",
+    itinerary: [
+      {
+        day: "Day 1", title: "Arrival & Western Circuit",
+        route: [
+          {name:"Coimbatore",desc:"Departure point — 5:00 AM",type:"start"},
+          {name:"Munnar",desc:"Breakfast stop · ~130 km · NH 544",type:"mid"},
+          {name:"Chithirapuram",desc:"Tea plantation views",type:"mid"},
+          {name:"Rajakkad",desc:"Spice garden roads",type:"mid"},
+          {name:"Lockhart Gap",desc:"⚠️ 1800m elevation · Misty hairpins · Must stop",type:"highlight"},
+          {name:"Poopara",desc:"Valley viewpoint",type:"mid"},
+          {name:"Suriyanelli",desc:"Silent valley stretch",type:"mid"},
+          {name:"Chinnakanal Waterfalls",desc:"Refreshment & swim stop",type:"mid"},
+          {name:"Munnar",desc:"Night stay · Villa check-in",type:"end"},
+        ]
+      },
+      {
+        day: "Day 2", title: "Eravikulam & Return",
+        route: [
+          {name:"Munnar",desc:"Early start — 6:00 AM",type:"start"},
+          {name:"Eravikulam National Park",desc:"Nilgiri Tahr habitat · UNESCO candidate",type:"highlight"},
+          {name:"Anamudi View Area",desc:"South India's highest peak — 2695m",type:"highlight"},
+          {name:"Lakkam Waterfalls",desc:"Hidden gem · Ideal swim spot",type:"mid"},
+          {name:"Marayoor",desc:"Sandalwood forest · Muniyara dolmens",type:"mid"},
+          {name:"Kanthalloor",desc:"Apple orchards · Tea & snacks",type:"mid"},
+          {name:"Coimbatore",desc:"Return · ~220 km",type:"end"},
+        ]
+      }
+    ]
+  },
+  3: {
+    days: 3, nights: 2,
+    coverage: "95%", rating: "9.8/10",
+    distance: "600 km", distSub: "3-day epic circuit",
+    itinerary: [
+      {
+        day: "Day 1", title: "Lockhart Gap Circuit",
+        route: [
+          {name:"Coimbatore",desc:"Departure — 4:30 AM",type:"start"},
+          {name:"Munnar",desc:"Breakfast · ~130 km",type:"mid"},
+          {name:"Chithirapuram",desc:"Tea estate roads",type:"mid"},
+          {name:"Rajakkad",desc:"Spice gardens",type:"mid"},
+          {name:"Lockhart Gap",desc:"⚠️ 1800m · Signature stop",type:"highlight"},
+          {name:"Poopara",desc:"Valley overlook",type:"mid"},
+          {name:"Suriyanelli",desc:"Quiet forest stretch",type:"mid"},
+          {name:"Chinnakanal Waterfalls",desc:"Photography stop",type:"mid"},
+          {name:"Munnar",desc:"Night stay · 🔥 Campfire",type:"end"},
+        ]
+      },
+      {
+        day: "Day 2", title: "Top Station & Tea Roads",
+        route: [
+          {name:"Munnar",desc:"Morning ride — 7:00 AM",type:"start"},
+          {name:"Mattupetty",desc:"Sunrise at reservoir",type:"mid"},
+          {name:"Echo Point",desc:"Morning echo phenomenon",type:"mid"},
+          {name:"Kundala Lake",desc:"Dam viewpoint",type:"mid"},
+          {name:"Top Station",desc:"⭐ Peak experience · 2100m",type:"highlight"},
+          {name:"Vattavada",desc:"Cool mountain farms",type:"mid"},
+          {name:"Tea Estate Roads",desc:"Private back-roads through estates",type:"highlight"},
+          {name:"Munnar",desc:"Return · Night stay",type:"end"},
+        ]
+      },
+      {
+        day: "Day 3", title: "Eravikulam & Return",
+        route: [
+          {name:"Munnar",desc:"Early start — 6:00 AM",type:"start"},
+          {name:"Eravikulam National Park",desc:"Nilgiri Tahr habitat · UNESCO candidate",type:"highlight"},
+          {name:"Anamudi View Area",desc:"South India's highest peak — 2695m",type:"highlight"},
+          {name:"Lakkam Waterfalls",desc:"Hidden gem · Ideal swim spot",type:"mid"},
+          {name:"Marayoor",desc:"Sandalwood & dolmens",type:"mid"},
+          {name:"Kanthalloor",desc:"Apple capital of Kerala",type:"mid"},
+          {name:"Coimbatore",desc:"Return home · ~220 km",type:"end"},
+        ]
+      }
+    ]
+  }
+};
+
+const EXPENSE_CATS = [
+  {icon:"⛽",name:"Petrol"},{icon:"🏠",name:"Homestay"},{icon:"🍛",name:"Food"},
+  {icon:"☕",name:"Tea Breaks"},{icon:"🔧",name:"Bike Repair"},{icon:"🛞",name:"Puncture"},
+  {icon:"🚑",name:"First Aid"},{icon:"💧",name:"Water"},{icon:"🔥",name:"Campfire"},
+  {icon:"🎟️",name:"Sightseeing"},{icon:"🛵",name:"Parking"},{icon:"💸",name:"Other"}
+];
+
+const RAIN_ITEMS = [
+  "Waterproof riding jacket","Waterproof riding pants","Rain gloves (over regular)",
+  "Boot covers / waterproof boots","Helmet visor anti-fog insert","Rain cover for luggage / bags",
+  "Waterproof document pouch","Extra dry clothes in waterproof bag","Tire inspection for wet grip",
+  "Emergency rain poncho (spare)","Anti-fog visor spray","Reflective vest for low visibility"
+];
+const PACKING_ITEMS = [
+  "Riding helmet (full-face)","Riding jacket with armor","Riding gloves","Knee guards",
+  "ID proof & RC book","Insurance papers","First aid kit","Tool kit & puncture kit",
+  "Phone mount & charger","Power bank (10000mAh+)","Sunscreen","Sunglasses",
+  "Casual clothes (2 sets)","Towel","Personal medicines","Snacks & dry fruits",
+  "Water bottle (1L each)","Emergency cash (₹2000)","Map / Google Maps offline","Bungee straps"
+];
+const BIKE_ITEMS = [
+  "Engine oil level check","Brake fluid level","Front brake check","Rear brake check",
+  "Tire pressure (correct PSI)","Tire tread depth OK","Chain lubrication","Chain tension OK",
+  "Headlight working","Tail & brake light","Turn signals working","Horn working",
+  "Fuel tank full","Fuel reserve working","Air filter clean","Battery terminals tight",
+  "All nuts & bolts tight","Coolant level (if applicable)","Mirrors adjusted","Toolkit packed"
+];
+
+const EMERGENCY_CONTACTS = [
+  {emoji:"👑",name:"Ride Leader",role:"Siva Kumar",phone:"9XXXXXXXXX"},
+  {emoji:"🏥",name:"Munnar Hospital",role:"Government Medical College",phone:"04865-232012"},
+  {emoji:"🚔",name:"Munnar Police",role:"Station Control",phone:"04865-231340"},
+  {emoji:"🔧",name:"Road Rescue",role:"Kerala Highway Patrol",phone:"1033"},
+  {emoji:"⛽",name:"Fuel Rescue",role:"NHAI Helpline",phone:"1033"},
+  {emoji:"🚑",name:"Ambulance",role:"Kerala Emergency",phone:"108"},
+];
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+window.onload = () => {
+  generateStars();
+  loadData();
+  setDefaultDate();
+  calcFuel();
+  calcMileage();
+};
+
+function setDefaultDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('expDate').value = today;
+  document.getElementById('tripStart').value = '2026-07-10';
+  document.getElementById('tripEnd').value = '2026-07-12';
+}
+
+function generateStars() {
+  const c = document.getElementById('bgStars');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 2 + 0.5;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*60}%;left:${Math.random()*100}%;opacity:${Math.random()*0.5+0.1}`;
+    c.appendChild(s);
+  }
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function openPlan(days) {
+  currentPlan = days;
+  document.getElementById('homePage').style.display = 'none';
+  const pp = document.getElementById('plannerPage');
+  pp.classList.add('active');
+  renderItinerary();
+  renderCategories();
+  renderChecklists();
+  renderContacts();
+  updateStats();
+  updateEmergency();
+  renderExpenseTable();
+  updateCharts();
+  renderCompletionSteps();
+  generateReport();
+}
+
+function goHome() {
+  document.getElementById('homePage').style.display = 'block';
+  document.getElementById('plannerPage').classList.remove('active');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-bar .tab').forEach((t,i) => {
+    const tabs = ['overview','itinerary','budget','charts','checklists','tools','export'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'charts') { setTimeout(updateCharts, 100); }
+  if (name === 'export') generateReport();
+}
+
+function switchCheckTab(name) {
+  document.querySelectorAll('#tab-checklists .tab').forEach((t,i) => {
+    const tabs = ['rain','packing','bike','contacts'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.check-tab-content').forEach(c => c.style.display = 'none');
+  document.getElementById('checkTab-'+name).style.display = 'block';
+}
+
+// ═══════════════════════════════════════
+// ITINERARY
+// ═══════════════════════════════════════
+function renderItinerary() {
+  const plan = PLANS[currentPlan];
+  document.getElementById('itinCoverage').textContent = plan.coverage;
+  document.getElementById('itinRating').textContent = plan.rating;
+  document.getElementById('itinDays').textContent = plan.days;
+  document.getElementById('coverageBar').style.width = plan.coverage;
+
+  const tabsEl = document.getElementById('dayTabs');
+  const contentEl = document.getElementById('dayContent');
+  tabsEl.innerHTML = '';
+  contentEl.innerHTML = '';
+
+  plan.itinerary.forEach((day, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'day-tab' + (i===0?' active':'');
+    tab.textContent = day.day + ' — ' + day.title;
+    tab.onclick = () => {
+      document.querySelectorAll('.day-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.day-panel').forEach((p,pi)=>p.style.display=pi===i?'block':'none');
+    };
+    tabsEl.appendChild(tab);
+
+    const panel = document.createElement('div');
+    panel.className = 'day-panel glass-card';
+    panel.style.display = i===0?'block':'none';
+    panel.innerHTML = `<div class="section-title">${day.day}: ${day.title}</div>
+      <div class="route-timeline">${day.route.map((pt,ri) => `
+        <div class="route-point">
+          <div class="route-dot ${ri===0?'start':ri===day.route.length-1?'end':''}">${ri+1}</div>
+          <div>
+            <div class="route-name" style="${pt.type==='highlight'?'color:var(--orange)':''}">${pt.name} ${pt.type==='highlight'?'⭐':''}</div>
+            <div class="route-desc">${pt.desc}</div>
+          </div>
+        </div>`).join('')}</div>`;
+    contentEl.appendChild(panel);
+  });
+}
+
+function renderCompletionSteps() {
+  const plan = PLANS[currentPlan];
+  const el = document.getElementById('completionSteps');
+  el.innerHTML = '';
+  plan.itinerary.forEach((day, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'completion-step' + (completedDays.includes(i)?' done':'');
+    btn.innerHTML = (completedDays.includes(i)?'✅':'⬜') + ' ' + day.day;
+    btn.onclick = () => toggleDay(i);
+    el.appendChild(btn);
+  });
+  updateCompletionMeter();
+}
+
+function toggleDay(i) {
+  if (completedDays.includes(i)) completedDays = completedDays.filter(d=>d!==i);
+  else completedDays.push(i);
+  saveData();
+  renderCompletionSteps();
+}
+
+function updateCompletionMeter() {
+  const plan = PLANS[currentPlan];
+  const pct = Math.round((completedDays.length / plan.days) * 100);
+  document.getElementById('completionPct').textContent = pct + '%';
+  document.getElementById('completionProgress').style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════
+// EXPENSE CATEGORIES
+// ═══════════════════════════════════════
+function renderCategories() {
+  const el = document.getElementById('expenseCategories');
+  el.innerHTML = EXPENSE_CATS.map(c => `
+    <div class="cat-btn" onclick="filterCat('${c.name}')">
+      <span class="cat-icon">${c.icon}</span>${c.name}
+    </div>`).join('');
+}
+
+function filterCat(name) {
+  document.getElementById('expCat').value = EXPENSE_CATS.find(c=>c.name===name)?.icon+' '+name || name;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.textContent.trim().endsWith(name)));
+  switchTab('budget');
+}
+
+// ═══════════════════════════════════════
+// EXPENSES
+// ═══════════════════════════════════════
+function addExpense() {
+  const name = document.getElementById('expName').value.trim();
+  const amount = parseFloat(document.getElementById('expAmount').value) || 0;
+  if (!name || !amount) { showToast('Please enter name & amount'); return; }
+  expenses.push({
+    cat: document.getElementById('expCat').value,
+    name, amount,
+    date: document.getElementById('expDate').value,
+    day: document.getElementById('expDay').value,
+    notes: document.getElementById('expNotes').value
+  });
+  document.getElementById('expName').value = '';
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expNotes').value = '';
+  saveData();
+  renderExpenseTable();
+  updateStats();
+  updateCharts();
+  showToast('Expense added ✅');
+}
+
+function renderExpenseTable() {
+  const tbody = document.getElementById('expenseTableBody');
+  tbody.innerHTML = '';
+  let total = 0;
+  expenses.forEach((e, i) => {
+    total += e.amount;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="color:var(--text3)">${i+1}</td>
+      <td>${e.cat}</td><td>${e.name}</td>
+      <td class="amount">₹${e.amount.toLocaleString()}</td>
+      <td>${e.date||'—'}</td><td>Day ${e.day}</td>
+      <td style="color:var(--text2)">${e.notes||'—'}</td>
+      <td>
+        <button class="btn-sm btn-edit" onclick="editExpense(${i})">✏️ Edit</button>
+        <button class="btn-sm btn-delete" onclick="deleteExpense(${i})" style="margin-left:4px">🗑️</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('expenseTotal').textContent = '₹' + total.toLocaleString();
+}
+
+function deleteExpense(i) {
+  expenses.splice(i, 1);
+  saveData();
+  renderExpenseTable();
+  updateStats();
+  updateCharts();
+  showToast('Expense deleted');
+}
+
+function editExpense(i) {
+  editingIdx = i;
+  const e = expenses[i];
+  document.getElementById('modalTitle').textContent = '✏️ Edit Expense';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:grid;gap:0.75rem">
+      <div class="info-input-group"><label>Category</label>
+        <select class="info-input" id="me-cat">${EXPENSE_CATS.map(c=>`<option ${e.cat.includes(c.name)?'selected':''}>${c.icon} ${c.name}</option>`).join('')}</select></div>
+      <div class="info-input-group"><label>Name</label><input class="info-input" id="me-name" value="${e.name}"></div>
+      <div class="info-input-group"><label>Amount</label><input class="info-input" type="number" id="me-amount" value="${e.amount}"></div>
+      <div class="info-input-group"><label>Date</label><input class="info-input" type="date" id="me-date" value="${e.date}"></div>
+      <div class="info-input-group"><label>Day</label><select class="info-input" id="me-day">
+        <option ${e.day=='1'?'selected':''} value="1">Day 1</option>
+        <option ${e.day=='2'?'selected':''} value="2">Day 2</option>
+        <option ${e.day=='3'?'selected':''} value="3">Day 3</option>
+      </select></div>
+      <div class="info-input-group"><label>Notes</label><input class="info-input" id="me-notes" value="${e.notes}"></div>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveEditExpense() {
+  expenses[editingIdx] = {
+    cat: document.getElementById('me-cat').value,
+    name: document.getElementById('me-name').value,
+    amount: parseFloat(document.getElementById('me-amount').value)||0,
+    date: document.getElementById('me-date').value,
+    day: document.getElementById('me-day').value,
+    notes: document.getElementById('me-notes').value
+  };
+  closeModal();
+  saveData();
+  renderExpenseTable();
+  updateStats();
+  updateCharts();
+  showToast('Expense updated ✅');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// ═══════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════
+function updateStats() {
+  const plan = PLANS[currentPlan];
+  const budget = parseFloat(document.getElementById('totalBudget')?.value)||30000;
+  const riders = parseFloat(document.getElementById('numRiders')?.value)||10;
+  const bikes = parseFloat(document.getElementById('numBikes')?.value)||5;
+  const total = expenses.reduce((s,e)=>s+e.amount,0);
+  const remaining = budget - total;
+  const pct = budget>0?Math.round((total/budget)*100):0;
+
+  document.getElementById('st-budget').textContent = '₹'+budget.toLocaleString();
+  document.getElementById('st-spent').textContent = '₹'+total.toLocaleString();
+  document.getElementById('st-remaining').textContent = '₹'+remaining.toLocaleString();
+  document.getElementById('st-perhead').textContent = riders>0?'₹'+Math.round(total/riders).toLocaleString():'—';
+  document.getElementById('st-perbike').textContent = bikes>0?'₹'+Math.round(total/bikes).toLocaleString()+' / bike':'—';
+  document.getElementById('st-spent-pct').textContent = pct+'% used';
+  document.getElementById('st-rem-pct').textContent = (100-pct)+'% left';
+  document.getElementById('budgetPct').textContent = pct+'%';
+  document.getElementById('budgetProgress').style.width = Math.min(pct,100)+'%';
+
+  document.getElementById('totalDist').textContent = plan.distance;
+  document.getElementById('totalDistSub').textContent = plan.distSub;
+  document.getElementById('avgDay').textContent = plan.days>0?'₹'+Math.round(total/plan.days).toLocaleString():'—';
+  document.getElementById('avgRider').textContent = riders>0?'₹'+Math.round(total/riders).toLocaleString():'—';
+
+  // Fuel estimate
+  const dist = parseFloat(plan.distance)||420;
+  const fuelEst = Math.round((dist/35)*102*bikes);
+  document.getElementById('fuelEst').textContent = '₹'+fuelEst.toLocaleString();
+}
+
+function updateEmergency() {
+  const fund = parseFloat(document.getElementById('emergencyFund')?.value)||0;
+  const used = parseFloat(document.getElementById('emergencyUsed')?.value)||0;
+  const remaining = fund - used;
+  document.getElementById('emergencyRemaining').value = '₹'+remaining.toLocaleString();
+  document.getElementById('emergencyMax').textContent = '₹'+fund.toLocaleString();
+  document.getElementById('emergencyProgress').style.width = fund>0?Math.min((used/fund)*100,100)+'%':'0%';
+}
+
+// ═══════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════
+let charts = {};
+function updateCharts() {
+  // Category totals
+  const catTotals = {};
+  EXPENSE_CATS.forEach(c => catTotals[c.name] = 0);
+  expenses.forEach(e => {
+    const key = EXPENSE_CATS.find(c=>e.cat.includes(c.name))?.name || 'Other';
+    catTotals[key] = (catTotals[key]||0) + e.amount;
+  });
+  const catKeys = Object.keys(catTotals).filter(k=>catTotals[k]>0);
+  const catVals = catKeys.map(k=>catTotals[k]);
+
+  // Day totals
+  const days = PLANS[currentPlan].days;
+  const dayTotals = Array.from({length:days},(_,i)=>
+    expenses.filter(e=>parseInt(e.day)===i+1).reduce((s,e)=>s+e.amount,0)
+  );
+
+  // Timeline
+  const dated = [...expenses].filter(e=>e.date).sort((a,b)=>a.date.localeCompare(b.date));
+  let running = 0;
+  const tlLabels = dated.map(e=>e.date);
+  const tlVals = dated.map(e=>{ running+=e.amount; return running; });
+
+  const opts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#9090a8',boxWidth:12,font:{size:11}}}},
+  };
+
+  // Pie
+  if (charts.pie) charts.pie.destroy();
+  if (catKeys.length) {
+    charts.pie = new Chart(document.getElementById('pieChart'), {
+      type:'doughnut', data:{
+        labels:catKeys,
+        datasets:[{data:catVals,backgroundColor:['#ff8c00','#1e90ff','#00e676','#ff4444','#ffcc00','#cc00ff','#00ccff','#ff6699','#66ff66','#ff9966','#9966ff','#ffff66'].slice(0,catKeys.length),borderColor:'rgba(0,0,0,0.3)',borderWidth:1}]
+      }, options:{...opts,cutout:'60%'}
+    });
+  }
+
+  // Bar
+  if (charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(document.getElementById('barChart'), {
+    type:'bar', data:{
+      labels: Array.from({length:days},(_,i)=>'Day '+(i+1)),
+      datasets:[{label:'Spending (₹)',data:dayTotals,backgroundColor:'rgba(255,140,0,0.7)',borderColor:'var(--orange)',borderWidth:1,borderRadius:6}]
+    }, options:{...opts,plugins:{...opts.plugins},scales:{x:{ticks:{color:'#9090a8'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#9090a8'},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+
+  // Line
+  if (charts.line) charts.line.destroy();
+  if (tlVals.length) {
+    charts.line = new Chart(document.getElementById('lineChart'), {
+      type:'line', data:{
+        labels:tlLabels,
+        datasets:[{label:'Cumulative Spend (₹)',data:tlVals,borderColor:'var(--blue)',backgroundColor:'rgba(30,144,255,0.08)',fill:true,tension:0.4,pointBackgroundColor:'var(--blue)',pointRadius:4}]
+      }, options:{...opts,scales:{x:{ticks:{color:'#9090a8'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#9090a8'},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+}
+
+// ═══════════════════════════════════════
+// CHECKLISTS
+// ═══════════════════════════════════════
+function renderChecklists() {
+  renderChecklist('rain', RAIN_ITEMS);
+  renderChecklist('packing', PACKING_ITEMS);
+  renderChecklist('bike', BIKE_ITEMS);
+}
+
+function renderChecklist(type, items) {
+  const el = document.getElementById('checkTab-'+type);
+  if (!checkedItems[type]) checkedItems[type] = [];
+  const checked = checkedItems[type].length;
+  el.innerHTML = `<div class="glass-card orange-accent" style="margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+      <span style="font-size:0.85rem;color:var(--text2)">${checked}/${items.length} completed</span>
+      <button class="btn-sm btn-edit" onclick="clearChecklist('${type}')">Reset</button>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${items.length?Math.round(checked/items.length*100):0}%"></div></div>
+  </div>
+  <div class="checklist-grid">${items.map((item,i)=>`
+    <div class="checklist-item ${checkedItems[type].includes(i)?'checked':''}" onclick="toggleCheck('${type}',${i})">
+      <div class="check-box">${checkedItems[type].includes(i)?'✓':''}</div>${item}
+    </div>`).join('')}</div>`;
+}
+
+function toggleCheck(type, idx) {
+  if (!checkedItems[type]) checkedItems[type] = [];
+  if (checkedItems[type].includes(idx)) checkedItems[type] = checkedItems[type].filter(i=>i!==idx);
+  else checkedItems[type].push(idx);
+  saveData();
+  const items = type==='rain'?RAIN_ITEMS:type==='packing'?PACKING_ITEMS:BIKE_ITEMS;
+  renderChecklist(type, items);
+}
+
+function clearChecklist(type) {
+  checkedItems[type] = [];
+  saveData();
+  const items = type==='rain'?RAIN_ITEMS:type==='packing'?PACKING_ITEMS:BIKE_ITEMS;
+  renderChecklist(type, items);
+}
+
+function renderContacts() {
+  const el = document.getElementById('checkTab-contacts');
+  el.innerHTML = `<div class="glass-card orange-accent" style="margin-bottom:1rem">
+    <div class="section-title">📞 Emergency Contacts</div>
+    <div class="contact-list">${EMERGENCY_CONTACTS.map(c=>`
+      <div class="contact-item">
+        <div class="contact-avatar">${c.emoji}</div>
+        <div class="contact-info">
+          <div class="contact-name">${c.name}</div>
+          <div class="contact-role">${c.role}</div>
+        </div>
+        <div class="contact-phone">${c.phone}</div>
+      </div>`).join('')}</div></div>`;
+}
+
+// ═══════════════════════════════════════
+// TOOLS
+// ═══════════════════════════════════════
+function calcFuel() {
+  const dist = parseFloat(document.getElementById('fcDist')?.value)||0;
+  const mileage = parseFloat(document.getElementById('fcMileage')?.value)||35;
+  const price = parseFloat(document.getElementById('fcPrice')?.value)||102;
+  const bikes = parseFloat(document.getElementById('fcBikes')?.value)||5;
+  const litersPerBike = mileage>0?dist/mileage:0;
+  const totalLiters = litersPerBike * bikes;
+  const costPerBike = litersPerBike * price;
+  const totalCost = costPerBike * bikes;
+  document.getElementById('fr-liters').textContent = litersPerBike.toFixed(1)+' L';
+  document.getElementById('fr-total').textContent = totalLiters.toFixed(1)+' L';
+  document.getElementById('fr-cost').textContent = '₹'+Math.round(costPerBike).toLocaleString();
+  document.getElementById('fr-totalcost').textContent = '₹'+Math.round(totalCost).toLocaleString();
+}
+
+function calcMileage() {
+  const dist = parseFloat(document.getElementById('mcDist')?.value)||1;
+  const fuel = parseFloat(document.getElementById('mcFuel')?.value)||1;
+  const cost = parseFloat(document.getElementById('mcCost')?.value)||0;
+  const mileage = fuel>0?dist/fuel:0;
+  const perKm = dist>0?cost/dist:0;
+  document.getElementById('mr-mileage').textContent = mileage.toFixed(1);
+  document.getElementById('mr-perkm').textContent = '₹'+perKm.toFixed(2);
+}
+
+// ═══════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════
+function generateReport() {
+  const plan = PLANS[currentPlan];
+  const budget = parseFloat(document.getElementById('totalBudget')?.value)||30000;
+  const riders = parseFloat(document.getElementById('numRiders')?.value)||10;
+  const bikes = parseFloat(document.getElementById('numBikes')?.value)||5;
+  const total = expenses.reduce((s,e)=>s+e.amount,0);
+  const catTotals = {};
+  expenses.forEach(e => {
+    const key = EXPENSE_CATS.find(c=>e.cat.includes(c.name))?.name||'Other';
+    catTotals[key]=(catTotals[key]||0)+e.amount;
+  });
+
+  const report = `
+╔══════════════════════════════════════════╗
+║    🏍️  MUNNAR RIDE PLANNER PRO          ║
+║    Budget & Expense Report              ║
+╚══════════════════════════════════════════╝
+
+Plan         : ${plan.days} Days / ${plan.nights} Nights
+Distance     : ${plan.distance}
+Rating       : ${plan.rating}  Coverage: ${plan.coverage}
+Riders       : ${riders}   Bikes: ${bikes}
+
+──────────────────────────────────────────
+BUDGET SUMMARY
+──────────────────────────────────────────
+Total Budget : ₹${budget.toLocaleString()}
+Total Spent  : ₹${total.toLocaleString()}
+Remaining    : ₹${(budget-total).toLocaleString()}
+Per Head     : ₹${Math.round(total/riders).toLocaleString()}
+Per Bike     : ₹${Math.round(total/bikes).toLocaleString()}
+
+──────────────────────────────────────────
+CATEGORY BREAKDOWN
+──────────────────────────────────────────
+${Object.entries(catTotals).map(([k,v])=>`${k.padEnd(18)}: ₹${v.toLocaleString()}`).join('\n')||'No expenses yet'}
+
+──────────────────────────────────────────
+EXPENSE LOG (${expenses.length} entries)
+──────────────────────────────────────────
+${expenses.map((e,i)=>`${(i+1).toString().padStart(2)}. [${e.cat}] ${e.name} — ₹${e.amount.toLocaleString()} (Day ${e.day})`).join('\n')||'No expenses recorded'}
+
+──────────────────────────────────────────
+Generated: ${new Date().toLocaleString()}
+  `.trim();
+
+  const el = document.getElementById('reportPreview');
+  if (el) el.textContent = report;
+  return report;
+}
+
+function exportPDF() {
+  const report = generateReport();
+  const win = window.open('','_blank');
+  win.document.write(`<html><head><title>Munnar Ride Planner Report</title>
+    <style>body{font-family:monospace;padding:2rem;background:#fff;color:#111;white-space:pre-wrap}
+    h1{font-family:sans-serif}</style></head><body>${report}</body></html>`);
+  win.document.close();
+  win.print();
+  showToast('Print dialog opened 📄');
+}
+
+function exportExcel() {
+  const rows = [['#','Category','Name','Amount (₹)','Date','Day','Notes']];
+  expenses.forEach((e,i) => rows.push([i+1,e.cat,e.name,e.amount,e.date,'Day '+e.day,e.notes]));
+  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'munnar_ride_expenses.csv';
+  a.click();
+  showToast('Excel (CSV) downloaded 📊');
+}
+
+function printReport() {
+  exportPDF();
+}
+
+function downloadSummary() {
+  const blob = new Blob([generateReport()], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'munnar_ride_summary.txt';
+  a.click();
+  showToast('Summary downloaded 💾');
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(generateReport()).then(()=>showToast('Copied to clipboard 📋'));
+}
+
+function shareTrip() {
+  if (navigator.share) {
+    navigator.share({title:'Munnar Ride Planner', text:'Check out our Munnar trip plan!', url:window.location.href});
+  } else {
+    copyToClipboard();
+    showToast('Link copied for sharing 🔗');
+  }
+}
+
+// ═══════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════
+function saveData() {
+  localStorage.setItem('mrp_expenses', JSON.stringify(expenses));
+  localStorage.setItem('mrp_completed', JSON.stringify(completedDays));
+  localStorage.setItem('mrp_checked', JSON.stringify(checkedItems));
+}
+
+function saveInfo() {
+  const fields = ['numRiders','numBikes','totalBudget','budgetPerHead','tripStart','tripEnd','emergencyFund','emergencyUsed'];
+  const data = {};
+  fields.forEach(f => { const el = document.getElementById(f); if(el) data[f] = el.value; });
+  localStorage.setItem('mrp_info', JSON.stringify(data));
+}
+
+function loadData() {
+  try {
+    expenses = JSON.parse(localStorage.getItem('mrp_expenses')||'[]');
+    completedDays = JSON.parse(localStorage.getItem('mrp_completed')||'[]');
+    checkedItems = JSON.parse(localStorage.getItem('mrp_checked')||'{}');
+    const info = JSON.parse(localStorage.getItem('mrp_info')||'{}');
+    Object.entries(info).forEach(([k,v]) => { const el = document.getElementById(k); if(el) el.value = v; });
+  } catch(e) { expenses = []; }
+}
+
+function clearData() {
+  if (!confirm('Clear all trip data? This cannot be undone.')) return;
+  localStorage.clear();
+  expenses = [];
+  completedDays = [];
+  checkedItems = {};
+  location.reload();
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
